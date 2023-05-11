@@ -2,7 +2,7 @@ package api.commands.parser
 
 import api.commands.ParseResult
 import api.commands.Parser
-import me.zeepic.aiparkour.players.OfflineManager
+import api.helpers.OfflineManager
 import org.bukkit.OfflinePlayer
 import org.bukkit.command.CommandSender
 import kotlin.reflect.KParameter

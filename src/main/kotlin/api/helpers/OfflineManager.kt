@@ -1,4 +1,4 @@
-package me.zeepic.aiparkour.players
+package api.helpers
 
 import api.tasks.runAsync
 import org.bukkit.Bukkit

@@ -2,7 +2,7 @@ package api.commands.parser
 
 import api.commands.ParseResult
 import api.commands.Parser
-import me.zeepic.aiparkour.messaging.toEntityType
+import api.helpers.toEntityType
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.EntityType
 import kotlin.reflect.KParameter

@@ -1,7 +1,7 @@
 package api.commands
 
-import me.zeepic.aiparkour.AIParkour
-import me.zeepic.aiparkour.messaging.log
+import api.helpers.log
+import me.zeepic.blockshuffle.BlockShuffle
 import org.bukkit.Server
 import org.bukkit.command.CommandSender
 import org.bukkit.command.defaults.BukkitCommand
@@ -62,7 +62,7 @@ object CommandParser {
             command,
             group.java,
             parsers.mapValues { it.value!! },
-            AIParkour.shortName + "." + groupAnnotation.permission,
+            BlockShuffle.shortName + "." + groupAnnotation.permission,
             annotation.description,
             usage,
             annotation.aliases.toList()
@@ -87,7 +87,7 @@ object CommandParser {
                 }
                 aliases += it.name
                 aliases.addAll(it.aliases)
-                val fallbackPrefix = AIParkour.shortName
+                val fallbackPrefix = BlockShuffle.shortName
                 server.commandMap.register(fallbackPrefix, it)
                 log("Registered command \"/$fallbackPrefix:${it.usage.drop(1)}\" with permission \"${it.permission}\".")
             }

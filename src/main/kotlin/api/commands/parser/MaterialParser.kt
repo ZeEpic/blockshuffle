@@ -2,7 +2,7 @@ package api.commands.parser
 
 import api.commands.ParseResult
 import api.commands.Parser
-import me.zeepic.aiparkour.messaging.toMaterial
+import api.helpers.toMaterial
 import org.bukkit.Material
 import org.bukkit.command.CommandSender
 import kotlin.reflect.KParameter

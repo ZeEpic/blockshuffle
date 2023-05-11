@@ -1,6 +1,6 @@
 package api.commands
 
-import me.zeepic.aiparkour.messaging.send
+import api.helpers.send
 import org.bukkit.command.CommandSender
 import org.bukkit.command.defaults.BukkitCommand
 import kotlin.reflect.KParameter
