@@ -14,6 +14,7 @@ class PlayerActionListener : Listener {
     @EventHandler
     fun onDeath(event: PlayerRespawnEvent) {
         if (event.player.uniqueId !in Game.players) return
+        if (event.respawnLocation.world == BlockShuffle.gameWorld) return
         event.respawnLocation = BlockShuffle.gameWorld?.spawnLocation ?: BlockShuffle.lobbyLocation
     }
 

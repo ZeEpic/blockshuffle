@@ -4,9 +4,9 @@ import org.bukkit.Material
 
 object Settings {
     var roundTimeMinutes = 5
-    var coOpMode = false
+    var coOpMode = true
     var easyRounds = 4
-    var mediumRounds = 2
+    var mediumRounds = 3
     var endGameStartRound = 30
     var lives = -1
     var pvp = !coOpMode
@@ -58,7 +58,12 @@ object Settings {
         Material.CAMPFIRE,
         Material.TRAPPED_CHEST,
         Material.LANTERN,
-
+        Material.COBBLESTONE_WALL,
+        Material.COBBLESTONE_STAIRS,
+        Material.STONE_BRICK_STAIRS,
+        Material.STONE_SLAB,
+        Material.FLOWER_POT,
+        Material.SMOKER,
         // Wools
         Material.WHITE_WOOL,
         Material.ORANGE_WOOL,
@@ -121,7 +126,6 @@ object Settings {
         Material.BOOKSHELF,
         Material.OBSIDIAN,
         Material.CAULDRON,
-        Material.COMPARATOR,
         Material.REPEATER,
         Material.DROPPER,
         Material.DISPENSER,
@@ -130,15 +134,21 @@ object Settings {
         Material.OAK_LOG,
         Material.SPRUCE_LOG,
         Material.BEDROCK,
+        Material.LECTERN,
+        Material.BLAST_FURNACE,
+        Material.CARTOGRAPHY_TABLE
     )
-    val hardBlocks = mutableListOf(
+    val greenBlocks = mutableListOf(
         Material.CACTUS,
         Material.GREEN_WOOL,
         Material.GREEN_CONCRETE,
         Material.GREEN_STAINED_GLASS,
         Material.LIME_WOOL,
         Material.LIME_CONCRETE,
-        Material.LIME_STAINED_GLASS,
+        Material.LIME_STAINED_GLASS
+    )
+    val hardBlocks = mutableListOf(
+        Material.COMPARATOR,
         Material.NETHERRACK,
         Material.NETHER_BRICKS,
         Material.CRIMSON_NYLIUM,
@@ -154,12 +164,15 @@ object Settings {
         Material.CYAN_STAINED_GLASS,
         Material.SOUL_LANTERN,
         Material.SOUL_CAMPFIRE,
+        Material.CALCITE,
+        Material.AMETHYST_BLOCK,
+        Material.TNT
     )
     val endBlocks = mutableListOf(
         Material.PURPUR_BLOCK,
         Material.CHORUS_FLOWER,
         Material.CHORUS_PLANT,
         Material.END_STONE,
-        Material.END_STONE_BRICKS
+        Material.END_STONE_BRICKS,
     )
 }

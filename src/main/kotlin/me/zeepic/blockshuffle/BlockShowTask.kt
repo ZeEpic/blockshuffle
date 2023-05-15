@@ -13,7 +13,8 @@ import org.bukkit.Bukkit
 @Task(1.0)
 class BlockShowTask : Runnable {
     override fun run() {
-        val millisecondsLeft = Settings.roundTimeMinutes * 60_000 - (System.currentTimeMillis() - Game.lastRoundStarted)
+        val timeSinceRoundStarted = timeSinceGameStarted() - (Settings.roundTimeMinutes * 60_000L * Game.round)
+        val millisecondsLeft = -timeSinceRoundStarted
         Game.players.forEach { (uuid, block) ->
             val player = Bukkit.getPlayer(uuid) ?: return@forEach
             if (player.uniqueId in Game.hasFoundBlock) {
@@ -29,11 +30,30 @@ class BlockShowTask : Runnable {
                     )
                 )
             }
-            ObjectiveManager.setScores(mapOf(
-                "Time in Round: ${millisecondsLeft.coerceAtLeast(0).readableTimeLength()}" to 0,
-                "Round: ${Game.round}" to 1,
-            ))
-            ObjectiveManager.setBoard(player)
+            if (!Settings.isGamePaused) {
+                ObjectiveManager.setScores(
+                    mapOf(
+                        "Time in Round: ${millisecondsLeft.coerceAtLeast(0).readableTimeLength()}" to 0,
+                        "Round: ${Game.round}" to 1,
+                        "Co-op Mode: ${if (Settings.coOpMode) "Enabled" else "Disabled"}" to 2,
+                        "Skips Remaining: ${Settings.skipsAllowed - skipsUsed}" to 3,
+                        "Players Remaining: ${Game.players.size}" to 4,
+                    )
+                )
+                ObjectiveManager.setBoard(player)
+            }
+        }
+        if (!Settings.isGamePaused) {
+            Bukkit.getOnlinePlayers().filter { it.uniqueId !in Game.players }
+                .forEach {
+                    ObjectiveManager.setScores(
+                        mapOf(
+                            "Time in Round: ${millisecondsLeft.coerceAtLeast(0).readableTimeLength()}" to 0,
+                            "Round: ${Game.round}" to 1,
+                        )
+                    )
+                    ObjectiveManager.setBoard(it)
+                }
         }
         if (millisecondsLeft <= 0 && Game.players.isNotEmpty()) {
             Game.startNextRound()

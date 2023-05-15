@@ -4,15 +4,22 @@ import api.commands.Command
 import api.commands.CommandGroup
 import api.commands.CommandResult
 import api.helpers.broadcast
+import api.helpers.now
 import api.helpers.send
 import me.zeepic.blockshuffle.Game.startNextRound
 import org.bukkit.Bukkit
 import org.bukkit.GameMode
 import org.bukkit.Material
+import org.bukkit.OfflinePlayer
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
+import org.bukkit.potion.PotionEffect
+import org.bukkit.potion.PotionEffectType
 import java.util.*
 
+
+val skips = mutableMapOf<UUID, Boolean>()
+var skipsUsed = 0
 
 @CommandGroup("game.manage")
 class GameManagementCommands {
@@ -35,8 +42,8 @@ class GameManagementCommands {
         if (!result) {
             sender.send("&cFailed to delete old game world!")
         }
-        Game.generateNewWorld(sender) {
-            if (!it) return@generateNewWorld
+        Game.generateNewWorld(sender) { success ->
+            if (!success) return@generateNewWorld
             Game.players.clear()
             Bukkit.getOnlinePlayers().forEach { player ->
                 player.teleport(BlockShuffle.gameWorld!!.spawnLocation)
@@ -46,13 +53,32 @@ class GameManagementCommands {
                 player.inventory.clear()
                 player.health = 20.0
                 player.foodLevel = 20
+                Bukkit.getServer().advancementIterator().forEachRemaining {
+                    val progress = player.getAdvancementProgress(it)
+                    progress.awardedCriteria.forEach(progress::revokeCriteria)
+                }
             }
+            Game.startTime = now()
             skipsUsed = 0
             skips.clear()
             sender.send("&aGame started!")
             Game.round = 0
             Settings.isGamePaused = false
             startNextRound(first = true)
+        }
+        return CommandResult.SUCCESS
+    }
+
+    @Command("kickplayer", "Kicks a player from the game.")
+    fun kickCommand(sender: CommandSender, target: OfflinePlayer): CommandResult {
+        if (target.uniqueId !in Game.players) {
+            sender.send("&cThat player is not in the game!")
+            return CommandResult.SILENT_FAILURE
+        }
+        broadcast("&c${target.name} has been kicked from the game.")
+        Game.players -= target.uniqueId
+        if (target.isOnline) {
+            target.player?.teleport(BlockShuffle.lobbyLocation)
         }
         return CommandResult.SUCCESS
     }
@@ -66,6 +92,10 @@ class GameManagementCommands {
         if (Settings.isGamePaused) {
             Settings.isGamePaused = false
             broadcast("&aThe game has been un-paused.")
+            Game.players.mapNotNull { Bukkit.getPlayer(it.key) }.forEach {
+                it.addPotionEffect(PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 80, 10, true, false, false))
+                it.remainingAir = it.maximumAir
+            }
             return CommandResult.SUCCESS
         }
         Settings.isGamePaused = true
@@ -73,9 +103,6 @@ class GameManagementCommands {
 
         return CommandResult.SUCCESS
     }
-
-    private val skips = mutableListOf<UUID>()
-    private var skipsUsed = 0
 
     @Command("skip", "Votes to skip this round. You only get a few chances so use this wisely!")
     fun skipCommand(sender: Player): CommandResult {
@@ -92,14 +119,14 @@ class GameManagementCommands {
             skips -= sender.uniqueId
             return CommandResult.SUCCESS
         }
-        skips += sender.uniqueId
+        skips[sender.uniqueId] = true
         broadcast("&a${sender.name} &7has voted to skip this round! &7[&c${skips.size}&7/&c${Game.players.size}&7]")
         if (skips.size == Game.players.size) {
             broadcast("&aAll players have voted to skip this round!")
             skipsUsed += 1
             startNextRound()
+            skips.clear()
         }
-
         return CommandResult.SUCCESS
     }
 

@@ -10,28 +10,42 @@ import java.util.concurrent.CompletableFuture
 
 object Game {
     var round = 0
+    var startTime = -1L
     val players = mutableMapOf<UUID, Material>()
     val hasFoundBlock = mutableMapOf<UUID, Boolean>()
-    var lastRoundStarted = -1L
+    var pauseSeconds = 0L
     fun startNextRound(first: Boolean = false) {
         round += 1
-        lastRoundStarted = now()
-        if (!first) {
+        if (!first && skips.size != players.size) {
+            val removeMe = mutableListOf<UUID>()
             players.forEach { (uuid, block) ->
                 if (uuid !in hasFoundBlock) {
                     Bukkit.getPlayer(uuid)?.send("&7Time's up!")
-                    players.remove(uuid)
+                    removeMe += uuid
                     broadcast("&a${Bukkit.getPlayer(uuid)?.name} &7has been \"a lemon ate it\" (block was ${block.name.lowercase().replace("_", " ").title()})!")
-                    if (players.size <= 1 && Bukkit.getOnlinePlayers().size != 1) {
-                        endGame()
-                        return
-                    }
-                    if (Settings.coOpMode) {
-                        broadcast("Co-op mode is enabled, and the game will not continue without all players.")
-                        endGame()
-                        return
-                    }
                     Bukkit.getPlayer(uuid)?.gameMode = GameMode.SPECTATOR
+                }
+            }
+            removeMe.forEach { players.remove(it) }
+            if (Bukkit.getOnlinePlayers().size == 1) {
+                if (removeMe.isNotEmpty()) {
+                    broadcast("&aYou lost the game!")
+                    endGame()
+                    return
+                }
+            } else {
+                if (Settings.coOpMode && removeMe.isNotEmpty()) {
+                    broadcast("Co-op mode is enabled, and the game will not continue without all players.")
+                    endGame()
+                    return
+                }
+                if (players.size <= 1) {
+                    endGame()
+                    return
+                }
+                if (hasFoundBlock.isEmpty()) {
+                    endGame()
+                    return
                 }
             }
         }
@@ -42,7 +56,7 @@ object Game {
             .forEach {
                 val block = if (round <= Settings.easyRounds) {
                     Settings.easyBlocks[randomInt(Settings.easyBlocks.size)]
-                } else if (round <= Settings.mediumRounds) {
+                } else if (round <= Settings.mediumRounds + Settings.easyRounds) {
                     if (randomInt(4) == 1) {
                         Settings.easyBlocks[randomInt(Settings.easyBlocks.size)]
                     } else {
@@ -84,13 +98,14 @@ object Game {
 
     private fun endGame() {
         broadcast("&aThe game has ended!")
-        if (players.size == 1) {
+        if (hasFoundBlock.all { false } || hasFoundBlock.isEmpty()) {
+            broadcast("It's a tie! No one found their block.")
+        } else if (players.size == 1) {
             broadcast("&a${Bukkit.getOfflinePlayer(players.keys.first()).name} &7is the winner!")
         }
         players.clear()
         hasFoundBlock.clear()
         round = 0
-        lastRoundStarted = -1L
         Bukkit.getOnlinePlayers().forEach {
             it.teleport(BlockShuffle.lobbyLocation)
             it.send("Teleported to the lobby!")
