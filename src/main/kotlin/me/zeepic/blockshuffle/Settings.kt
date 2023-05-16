@@ -5,6 +5,10 @@ import org.bukkit.Material
 object Settings {
     var roundTimeMinutes = 5
     var coOpMode = true
+        set(value) {
+            pvp = !value
+            field = value
+        }
     var easyRounds = 4
     var mediumRounds = 3
     var endGameStartRound = 30
@@ -12,6 +16,15 @@ object Settings {
     var pvp = !coOpMode
     var skipsAllowed = 2
     var villageDistance = 150
+    var revealDesertBiome = true
+        set(value) {
+            if (value) {
+                hardBlocks.addAll(greenBlocks)
+            } else {
+                hardBlocks.removeAll(greenBlocks)
+            }
+            field = value
+        }
 
     var isGamePaused = false
 
@@ -145,7 +158,10 @@ object Settings {
         Material.GREEN_STAINED_GLASS,
         Material.LIME_WOOL,
         Material.LIME_CONCRETE,
-        Material.LIME_STAINED_GLASS
+        Material.LIME_STAINED_GLASS,
+        Material.CYAN_WOOL,
+        Material.CYAN_CONCRETE,
+        Material.CYAN_STAINED_GLASS
     )
     val hardBlocks = mutableListOf(
         Material.COMPARATOR,
@@ -159,9 +175,6 @@ object Settings {
         Material.DEEPSLATE_DIAMOND_ORE,
         Material.DIAMOND_BLOCK,
         Material.ANVIL,
-        Material.CYAN_WOOL,
-        Material.CYAN_CONCRETE,
-        Material.CYAN_STAINED_GLASS,
         Material.SOUL_LANTERN,
         Material.SOUL_CAMPFIRE,
         Material.CALCITE,
@@ -173,6 +186,6 @@ object Settings {
         Material.CHORUS_FLOWER,
         Material.CHORUS_PLANT,
         Material.END_STONE,
-        Material.END_STONE_BRICKS,
+        Material.END_STONE_BRICKS
     )
 }
