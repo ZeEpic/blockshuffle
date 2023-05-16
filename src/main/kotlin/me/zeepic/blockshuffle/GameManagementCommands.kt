@@ -11,6 +11,7 @@ import org.bukkit.Bukkit
 import org.bukkit.GameMode
 import org.bukkit.Material
 import org.bukkit.OfflinePlayer
+import org.bukkit.block.Biome
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.bukkit.potion.PotionEffect
@@ -45,12 +46,17 @@ class GameManagementCommands {
         Game.generateNewWorld(sender) { success ->
             if (!success) return@generateNewWorld
             Game.players.clear()
+            Game.lives.clear()
+            Game.hasFoundBlock.clear()
+            val spawnLocation = BlockShuffle.gameWorld!!.spawnLocation
             Bukkit.getOnlinePlayers().forEach { player ->
-                player.teleport(BlockShuffle.gameWorld!!.spawnLocation)
+                player.teleport(spawnLocation)
                 player.send("&7&oTeleported! &aA new game is starting.")
                 Game.players[player.uniqueId] = Material.values().random()
                 player.gameMode = GameMode.SURVIVAL
                 player.inventory.clear()
+                player.clearTitle()
+                player.activePotionEffects.map(PotionEffect::getType).forEach(player::removePotionEffect)
                 player.health = 20.0
                 player.foodLevel = 20
                 Bukkit.getServer().advancementIterator().forEachRemaining {
@@ -62,6 +68,23 @@ class GameManagementCommands {
             skipsUsed = 0
             skips.clear()
             sender.send("&aGame started!")
+            if (Settings.revealDesertBiome) {
+                // Find nearest desert biome
+                val desertBiome = BlockShuffle.gameWorld!!.locateNearestBiome(spawnLocation, Biome.DESERT, 10_000, 8)
+                if (desertBiome == null) {
+                    broadcast("&cNo desert biome was found within 10,000 blocks of spawn!")
+                } else {
+                    broadcast(" ")
+                    broadcast(
+                        "&7The nearest desert biome is at &6${desertBiome.x}, ${desertBiome.z}&7(${
+                            desertBiome.distance(
+                                spawnLocation
+                            )
+                        } blocks away)."
+                    )
+                    broadcast(" ")
+                }
+            }
             Game.round = 0
             Settings.isGamePaused = false
             startNextRound(first = true)
@@ -76,9 +99,12 @@ class GameManagementCommands {
             return CommandResult.SILENT_FAILURE
         }
         broadcast("&c${target.name} has been kicked from the game.")
-        Game.players -= target.uniqueId
+        Game.removePlayer(target.uniqueId)
         if (target.isOnline) {
             target.player?.teleport(BlockShuffle.lobbyLocation)
+        }
+        if (Game.players.size == Game.hasFoundBlock.size) {
+            startNextRound()
         }
         return CommandResult.SUCCESS
     }

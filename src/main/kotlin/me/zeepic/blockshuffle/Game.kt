@@ -5,6 +5,7 @@ import kong.unirest.Unirest
 import net.kyori.adventure.title.Title
 import org.bukkit.*
 import org.bukkit.command.CommandSender
+import org.bukkit.potion.PotionEffect
 import java.util.*
 import java.util.concurrent.CompletableFuture
 
@@ -13,11 +14,19 @@ object Game {
     var startTime = -1L
     val players = mutableMapOf<UUID, Material>()
     val hasFoundBlock = mutableMapOf<UUID, Boolean>()
+    val lives = mutableMapOf<UUID, Int>()
     var pauseSeconds = 0L
+
+    var roundStartTime = -1L
+    var roundPauseSeconds = 0L
+
     fun startNextRound(first: Boolean = false) {
         round += 1
+        roundStartTime = now()
+        roundPauseSeconds = 0L
         if (!first && skips.size != players.size) {
             val removeMe = mutableListOf<UUID>()
+            val preRemovalPlayerCount = players.size
             players.forEach { (uuid, block) ->
                 if (uuid !in hasFoundBlock) {
                     Bukkit.getPlayer(uuid)?.send("&7Time's up!")
@@ -26,28 +35,7 @@ object Game {
                     Bukkit.getPlayer(uuid)?.gameMode = GameMode.SPECTATOR
                 }
             }
-            removeMe.forEach { players.remove(it) }
-            if (Bukkit.getOnlinePlayers().size == 1) {
-                if (removeMe.isNotEmpty()) {
-                    broadcast("&aYou lost the game!")
-                    endGame()
-                    return
-                }
-            } else {
-                if (Settings.coOpMode && removeMe.isNotEmpty()) {
-                    broadcast("Co-op mode is enabled, and the game will not continue without all players.")
-                    endGame()
-                    return
-                }
-                if (players.size <= 1) {
-                    endGame()
-                    return
-                }
-                if (hasFoundBlock.isEmpty()) {
-                    endGame()
-                    return
-                }
-            }
+            removeMe.forEach { removePlayer(it, removeMe, preRemovalPlayerCount) }
         }
         hasFoundBlock.clear()
         broadcast("&aRound $round has started!")
@@ -110,6 +98,8 @@ object Game {
             it.teleport(BlockShuffle.lobbyLocation)
             it.send("Teleported to the lobby!")
             it.inventory.clear()
+            it.clearTitle()
+            it.activePotionEffects.map(PotionEffect::getType).forEach(it::removePotionEffect)
             it.gameMode = GameMode.ADVENTURE
         }
     }
@@ -130,6 +120,8 @@ object Game {
             return
         }
         world.setGameRule(GameRule.DO_INSOMNIA, false)
+        world.setGameRule(GameRule.PLAYERS_SLEEPING_PERCENTAGE, 1)
+
         BlockShuffle.gameWorld = world
         creator.send("Created new world with seed $seed!")
         val loadingRadius = 16
@@ -175,5 +167,33 @@ object Game {
         val seeds = response.body.getObject().getJSONArray("seeds")
         val seed = seeds.getJSONObject(BlockShuffle.random.nextInt(seeds.length()))
         return seed.getLong("seed")
+    }
+
+    fun removePlayer(id: UUID, removeMe: List<UUID> = emptyList(), preRemovalPlayerCount: Int = players.size) {
+        players -= id
+        hasFoundBlock -= id
+        skips -= id
+        lives -= id
+        if (preRemovalPlayerCount == 1) { // Single-player game?
+            if (removeMe.isNotEmpty()) {
+                broadcast("&aYou lost the game!")
+                endGame()
+                return
+            }
+        } else {
+            if (Settings.coOpMode && removeMe.isNotEmpty()) {
+                broadcast("Co-op mode is enabled, and the game will not continue without all players.")
+                endGame()
+                return
+            }
+            if (players.size <= 1) {
+                endGame()
+                return
+            }
+            if (hasFoundBlock.isEmpty()) {
+                endGame()
+                return
+            }
+        }
     }
 }

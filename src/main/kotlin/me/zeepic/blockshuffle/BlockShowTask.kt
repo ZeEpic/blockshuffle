@@ -1,9 +1,8 @@
 package me.zeepic.blockshuffle
 
-import api.helpers.ObjectiveManager
+import api.helpers.*
 import api.helpers.component
 import api.helpers.readableTimeLength
-import api.helpers.title
 import api.tasks.Task
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -13,7 +12,11 @@ import org.bukkit.Bukkit
 @Task(1.0)
 class BlockShowTask : Runnable {
     override fun run() {
-        val timeSinceRoundStarted = timeSinceGameStarted() - (Settings.roundTimeMinutes * 60_000L * Game.round)
+        // Cumulative time - including rushed rounds where all players found block before 5 minutes are up
+        val timeSinceRoundStartedCoOp = timeSinceGameStarted() - (Settings.roundTimeMinutes * 60_000L * Game.round)
+        // Rushed time - only time actually spent playing
+        val timeSinceRoundStartedVersus = now() - Game.roundStartTime - (Game.roundPauseSeconds * 1000L)
+        val timeSinceRoundStarted = if (Settings.coOpMode) timeSinceRoundStartedCoOp else timeSinceRoundStartedVersus
         val millisecondsLeft = -timeSinceRoundStarted
         Game.players.forEach { (uuid, block) ->
             val player = Bukkit.getPlayer(uuid) ?: return@forEach

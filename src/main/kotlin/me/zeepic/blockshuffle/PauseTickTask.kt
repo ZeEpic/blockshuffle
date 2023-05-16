@@ -10,6 +10,7 @@ class PauseTickTask : Runnable {
     override fun run() {
         if (Settings.isGamePaused) {
             Game.pauseSeconds += 1L
+            Game.roundPauseSeconds += 1L
         }
     }
 }
