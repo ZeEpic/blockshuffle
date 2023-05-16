@@ -6,6 +6,7 @@ import api.helpers.title
 import org.bukkit.block.BlockFace
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerMoveEvent
 
 @EventListener
@@ -27,6 +28,23 @@ class BlockStandListener : Listener {
                     Game.startNextRound()
                 }
             }
+        }
+    }
+
+    @EventHandler
+    fun onDeath(event: PlayerDeathEvent) {
+        if (event.player.uniqueId !in Game.players) return
+        if (Settings.isGamePaused) return
+        if (Settings.lives < 1) return
+        val lives = Game.lives[event.player.uniqueId]
+        if (lives == null) {
+            Game.lives[event.player.uniqueId] = Settings.lives - 1
+        } else {
+            Game.lives[event.player.uniqueId] = lives - 1
+        }
+        if (Game.lives[event.player.uniqueId]!! <= 0) {
+            broadcast("&a${event.player.name} &7has lost all their lives and is out of the game!")
+            Game.removePlayer(event.player.uniqueId)
         }
     }
 }
