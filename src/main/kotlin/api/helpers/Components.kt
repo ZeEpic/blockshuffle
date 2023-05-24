@@ -18,7 +18,7 @@ fun String.color() = LegacyComponentSerializer.legacyAmpersand().deserialize(thi
 
 fun String.toEntityType() = EntityType.values().firstOrNull { this == it.name.lowercase() }
 
-fun String.toMaterial() = Material.values().firstOrNull { this == it.name.lowercase() }
+fun String.toMaterial() = Material.values().firstOrNull { this.lowercase() == it.name.lowercase() }
 
 fun Component.serialize() = PlainTextComponentSerializer.plainText().serialize(this)
 

@@ -3,17 +3,16 @@ package me.zeepic.blockshuffle
 import api.commands.Command
 import api.commands.CommandGroup
 import api.commands.CommandResult
-import api.helpers.broadcast
-import api.helpers.now
-import api.helpers.send
+import api.helpers.*
 import me.zeepic.blockshuffle.Game.startNextRound
-import org.bukkit.Bukkit
-import org.bukkit.GameMode
-import org.bukkit.Material
-import org.bukkit.OfflinePlayer
+import org.bukkit.*
 import org.bukkit.block.Biome
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
+import org.bukkit.inventory.CookingRecipe
+import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.ShapedRecipe
+import org.bukkit.inventory.ShapelessRecipe
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
 import java.util.*
@@ -49,20 +48,9 @@ class GameManagementCommands {
             Game.lives.clear()
             Game.hasFoundBlock.clear()
             val spawnLocation = BlockShuffle.gameWorld!!.spawnLocation
-            Bukkit.getOnlinePlayers().forEach { player ->
-                player.teleport(spawnLocation)
-                player.send("&7&oTeleported! &aA new game is starting.")
-                Game.players[player.uniqueId] = Material.values().random()
-                player.gameMode = GameMode.SURVIVAL
-                player.inventory.clear()
-                player.clearTitle()
-                player.activePotionEffects.map(PotionEffect::getType).forEach(player::removePotionEffect)
-                player.health = 20.0
-                player.foodLevel = 20
-                Bukkit.getServer().advancementIterator().forEachRemaining {
-                    val progress = player.getAdvancementProgress(it)
-                    progress.awardedCriteria.forEach(progress::revokeCriteria)
-                }
+            val recipeKeys = recipeKeys()
+            Bukkit.getOnlinePlayers().forEach {
+                addPlayer(it, spawnLocation, recipeKeys)
             }
             Game.startTime = now()
             skipsUsed = 0
@@ -70,9 +58,9 @@ class GameManagementCommands {
             sender.send("&aGame started!")
             if (Settings.revealDesertBiome) {
                 // Find nearest desert biome
-                val desertBiome = BlockShuffle.gameWorld!!.locateNearestBiome(spawnLocation, Biome.DESERT, 10_000, 8)
+                val desertBiome = BlockShuffle.gameWorld!!.locateNearestBiome(spawnLocation, Biome.DESERT, 1000, 8)
                 if (desertBiome == null) {
-                    broadcast("&cNo desert biome was found within 10,000 blocks of spawn!")
+                    broadcast("&cNo desert biome was found near spawn!")
                 } else {
                     broadcast(" ")
                     broadcast(
@@ -90,6 +78,45 @@ class GameManagementCommands {
             startNextRound(first = true)
         }
         return CommandResult.SUCCESS
+    }
+
+    private fun recipeKeys(): List<NamespacedKey> {
+        val recipeKeys = mutableListOf<NamespacedKey>()
+        Bukkit.recipeIterator().forEachRemaining {
+            when (it) {
+                is ShapedRecipe -> {
+                    recipeKeys += it.key
+                }
+                is ShapelessRecipe -> {
+                    recipeKeys += it.key
+                }
+                is CookingRecipe<*> -> {
+                    recipeKeys += it.key
+                }
+            }
+        }
+        return recipeKeys
+    }
+
+    private fun addPlayer(player: Player, spawnLocation: Location, recipeKeys: List<NamespacedKey>) {
+        player.teleport(spawnLocation)
+        player.send("&7&oTeleported! &aA new game is starting.")
+        player.gameMode = GameMode.SURVIVAL
+        player.inventory.clear()
+        player.clearTitle()
+        player.activePotionEffects.map(PotionEffect::getType).forEach(player::removePotionEffect)
+        player.health = 20.0
+        player.foodLevel = 20
+        player.exp = 0f
+        player.bedSpawnLocation = null
+        recipeKeys.forEach(player::discoverRecipe)
+        if (Settings.bundle) {
+            player.inventory.addItem(ItemStack(Material.BUNDLE).named("Backpack"))
+        }
+        Bukkit.getServer().advancementIterator().forEachRemaining {
+            val progress = player.getAdvancementProgress(it)
+            progress.awardedCriteria.forEach(progress::revokeCriteria)
+        }
     }
 
     @Command("kickplayer", "Kicks a player from the game.")
@@ -151,8 +178,71 @@ class GameManagementCommands {
             broadcast("&aAll players have voted to skip this round!")
             skipsUsed += 1
             startNextRound()
-            skips.clear()
         }
+        return CommandResult.SUCCESS
+    }
+
+    @Command("addplayer", "Adds a player to the game, if possible.")
+    fun addPlayerCommand(sender: CommandSender, target: Player): CommandResult {
+        if (target.uniqueId in Game.players) {
+            sender.send("&cThat player is already in the game!")
+            return CommandResult.SILENT_FAILURE
+        }
+        if (Game.players.isEmpty()) {
+            sender.send("&cThere is no game running!")
+            return CommandResult.SILENT_FAILURE
+        }
+        addPlayer(target, BlockShuffle.gameWorld!!.spawnLocation, recipeKeys())
+        broadcast("&a${target.name} has been added to the game!")
+        return CommandResult.SUCCESS
+    }
+
+    @Command("easymode", "Toggles easy mode.")
+    fun easyModeCommand(sender: CommandSender, target: Player): CommandResult {
+        if (target.uniqueId !in Game.easyMode) {
+            Game.easyMode += target.uniqueId
+        } else {
+            Game.easyMode -= target.uniqueId
+        }
+        sender.send("&aEasy mode for ${target.name} has been toggled.")
+        if ((sender as? Player)?.uniqueId != target.uniqueId) {
+            target.sendMessage(" ")
+            target.send("You are now ${if (target.uniqueId in Game.easyMode) "" else "not "}in easy mode.")
+            target.sendMessage(" ")
+        }
+        return CommandResult.SUCCESS
+    }
+
+    @Command("round", "Gets the current round.")
+    fun roundCommand(sender: CommandSender, round: Int): CommandResult {
+        if (Game.round <= 0) {
+            sender.send("&cThere is no game running!")
+            return CommandResult.SILENT_FAILURE
+        }
+        Game.round = round
+        sender.send("&7The current round is &6${Game.round}&7.")
+        return CommandResult.SUCCESS
+    }
+
+    @Command("addtime", "Adds time to the current round.")
+    fun addTimeCommand(sender: CommandSender, seconds: Int): CommandResult {
+        if (Game.round <= 0) {
+            sender.send("&cThere is no game running!")
+            return CommandResult.SILENT_FAILURE
+        }
+        Game.bonusTime += seconds * 1000L
+        sender.send("&7Added &6${(seconds * 1000L).readableTimeLength()} &7to the current round.")
+        return CommandResult.SUCCESS
+    }
+
+    @Command("setgameblock", "Sets the block of a player.")
+    fun setBlockCommand(sender: CommandSender, target: Player, block: Material): CommandResult {
+        if (target.uniqueId !in Game.players) {
+            sender.send("&cThat player is not in the game!")
+            return CommandResult.SILENT_FAILURE
+        }
+        Game.players[target.uniqueId] = block
+        broadcast("&7${target.name}'s new block is &6${Game.players[target.uniqueId]?.name?.lowercase()?.replace("_", " ") ?: "none"}&7.")
         return CommandResult.SUCCESS
     }
 

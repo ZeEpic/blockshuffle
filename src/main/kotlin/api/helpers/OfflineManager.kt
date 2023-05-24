@@ -5,10 +5,12 @@ import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
 import java.util.*
 
-object OfflineManager {
-    private val offlinePlayerCache = mutableMapOf<String, UUID>() // Name to UUID
+private typealias Name = String
 
-    fun getOfflinePlayer(name: String, callback: (OfflinePlayer?) -> Unit) {
+object OfflineManager {
+    private val offlinePlayerCache = mutableMapOf<Name, UUID>()
+
+    fun getOfflinePlayer(name: Name, callback: (OfflinePlayer?) -> Unit) {
         if (name in offlinePlayerCache) return callback(Bukkit.getOfflinePlayer(offlinePlayerCache[name]!!))
         runAsync {
             val offlinePlayer = Bukkit.getOfflinePlayer(name)

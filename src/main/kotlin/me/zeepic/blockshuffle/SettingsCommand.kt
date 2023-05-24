@@ -48,6 +48,15 @@ class SettingsCommand {
                 Settings.lives = newLives
                 sender.send("&aLives has been set to &6$newLives&a!")
             }
+            "bundle" -> {
+                val newBundle = value.toBooleanStrictOrNull()
+                if (newBundle == null) {
+                    sender.send("&cInvalid value!")
+                    return CommandResult.SILENT_FAILURE
+                }
+                Settings.bundle = newBundle
+                sender.send("&aBundle has been set to &6$newBundle&a!")
+            }
             else -> {
                 sender.send("&cInvalid setting!")
                 return CommandResult.SILENT_FAILURE

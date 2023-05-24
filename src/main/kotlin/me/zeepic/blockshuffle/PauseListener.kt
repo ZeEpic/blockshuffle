@@ -7,10 +7,13 @@ import org.bukkit.event.Cancellable
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
+import org.bukkit.event.block.BlockIgniteEvent
 import org.bukkit.event.block.BlockPlaceEvent
+import org.bukkit.event.block.FluidLevelChangeEvent
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityInteractEvent
 import org.bukkit.event.entity.EntityTargetEvent
+import org.bukkit.event.entity.ItemDespawnEvent
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerMoveEvent
@@ -60,6 +63,18 @@ class PauseListener : Listener {
     }
     @EventHandler
     fun onBreak(event: BlockBreakEvent) {
+        event.cancelIfPaused()
+    }
+    @EventHandler
+    fun onItemDespawn(event: ItemDespawnEvent) {
+        event.cancelIfPaused()
+    }
+    @EventHandler
+    fun onFireTick(event: BlockIgniteEvent) {
+        event.cancelIfPaused()
+    }
+    @EventHandler
+    fun onFluidTick(event: FluidLevelChangeEvent) {
         event.cancelIfPaused()
     }
 }

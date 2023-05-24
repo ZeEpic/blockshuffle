@@ -15,12 +15,17 @@ object Game {
     val players = mutableMapOf<UUID, Material>()
     val hasFoundBlock = mutableMapOf<UUID, Boolean>()
     val lives = mutableMapOf<UUID, Int>()
+    val easyMode = mutableListOf<UUID>()
     var pauseSeconds = 0L
+    var bonusTime = 0L
 
     var roundStartTime = -1L
     var roundPauseSeconds = 0L
 
     fun startNextRound(first: Boolean = false) {
+        if (players.isEmpty()) {
+            return
+        }
         round += 1
         roundStartTime = now()
         roundPauseSeconds = 0L
@@ -37,12 +42,13 @@ object Game {
             }
             removeMe.forEach { removePlayer(it, removeMe, preRemovalPlayerCount) }
         }
+        skips.clear()
         hasFoundBlock.clear()
         broadcast("&aRound $round has started!")
         Bukkit.getOnlinePlayers()
             .filter { it.uniqueId in players }
             .forEach {
-                val block = if (round <= Settings.easyRounds) {
+                var block = if (round <= Settings.easyRounds) {
                     Settings.easyBlocks[randomInt(Settings.easyBlocks.size)]
                 } else if (round <= Settings.mediumRounds + Settings.easyRounds) {
                     if (randomInt(4) == 1) {
@@ -58,6 +64,14 @@ object Game {
                     }
                 } else {
                     hardRoundsBlock()
+                }
+                if (it.uniqueId in easyMode) {
+                    it.send("&7You are in easy mode! You will only get easy blocks.")
+                    block = if (round <= Settings.easyRounds) {
+                        Settings.easiestBlocks[randomInt(Settings.easiestBlocks.size)]
+                    } else {
+                        Settings.easyBlocks[randomInt(Settings.easyBlocks.size)]
+                    }
                 }
                 players[it.uniqueId] = block
                 val blockName = block.name.lowercase().replace("_", " ").title()
@@ -91,6 +105,7 @@ object Game {
         } else if (players.size == 1) {
             broadcast("&a${Bukkit.getOfflinePlayer(players.keys.first()).name} &7is the winner!")
         }
+        broadcast("You've reached round $round! That means you've completed a total of ${round - 1 - skipsUsed} rounds!")
         players.clear()
         hasFoundBlock.clear()
         round = 0
@@ -99,6 +114,8 @@ object Game {
             it.send("Teleported to the lobby!")
             it.inventory.clear()
             it.clearTitle()
+            it.bedSpawnLocation = null
+            it.exp = 0f
             it.activePotionEffects.map(PotionEffect::getType).forEach(it::removePotionEffect)
             it.gameMode = GameMode.ADVENTURE
         }
@@ -121,7 +138,6 @@ object Game {
         }
         world.setGameRule(GameRule.DO_INSOMNIA, false)
         world.setGameRule(GameRule.PLAYERS_SLEEPING_PERCENTAGE, 1)
-
         BlockShuffle.gameWorld = world
         creator.send("Created new world with seed $seed!")
         val loadingRadius = 16
@@ -159,6 +175,7 @@ object Game {
 
     private fun generateSeed(): Long? {
         // Check the seed hunt api for a seed with a village near spawn
+        return Random().nextLong()
         val response = Unirest.post("https://seedhunt.net/api/verified?limit=50&page=0")
             .header("Content-Type", "application/json")
             .body("{\r\n    \"filter\": \"village_distance<=${Settings.villageDistance}\",\r\n    \"sort\": [\r\n        {\r\n            \"field\": \"\",\r\n            \"direction\": \"desc\"\r\n        }\r\n    ]\r\n}")

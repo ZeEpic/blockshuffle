@@ -13,11 +13,10 @@ import org.bukkit.Bukkit
 class BlockShowTask : Runnable {
     override fun run() {
         // Cumulative time - including rushed rounds where all players found block before 5 minutes are up
-        val timeSinceRoundStartedCoOp = timeSinceGameStarted() - (Settings.roundTimeMinutes * 60_000L * Game.round)
+        val timeLeftCoOp = (Settings.roundTimeMinutes * 60_000L * Game.round) - timeSinceGameStarted()
         // Rushed time - only time actually spent playing
-        val timeSinceRoundStartedVersus = now() - Game.roundStartTime - (Game.roundPauseSeconds * 1000L)
-        val timeSinceRoundStarted = if (Settings.coOpMode) timeSinceRoundStartedCoOp else timeSinceRoundStartedVersus
-        val millisecondsLeft = -timeSinceRoundStarted
+        val timeLeftVersus = (60_000L * 5L) - (now() - Game.roundStartTime - (Game.roundPauseSeconds * 1000L)) + Game.bonusTime
+        val millisecondsLeft = if (Settings.coOpMode) timeLeftCoOp else timeLeftVersus
         Game.players.forEach { (uuid, block) ->
             val player = Bukkit.getPlayer(uuid) ?: return@forEach
             if (player.uniqueId in Game.hasFoundBlock) {
