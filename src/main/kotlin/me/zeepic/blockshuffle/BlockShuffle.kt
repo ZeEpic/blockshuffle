@@ -12,7 +12,6 @@ import api.tasks.Task
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.World
-import org.bukkit.command.TabCompleter
 import org.bukkit.event.Listener
 import org.bukkit.plugin.java.JavaPlugin
 import java.util.*
@@ -22,9 +21,6 @@ class BlockShuffle : JavaPlugin() {
 
         instance = this
         lobbyLocation = Location(Bukkit.getWorld("world"), 0.5, 120.0, 0.5)
-
-        gameNetherWorld = Bukkit.getWorld(gameNetherWorldName)
-        gameWorld = Bukkit.getWorld(gameWorldName)
 
         API.typesAnnotatedWith<ArgumentParser<*>>(Parser::class)
             .forEach(CommandParser::registerArgumentParser)
@@ -58,9 +54,9 @@ class BlockShuffle : JavaPlugin() {
         lateinit var lobbyLocation: Location
 
         const val gameWorldName = "game"
-        const val gameNetherWorldName = "game_nether"
         var gameWorld: World? = null
         var gameNetherWorld: World? = null
+        var gameEndWorld: World? = null
 
         val random = Random()
     }

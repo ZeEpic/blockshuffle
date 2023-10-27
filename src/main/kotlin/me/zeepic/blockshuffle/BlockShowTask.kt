@@ -17,6 +17,7 @@ class BlockShowTask : Runnable {
         // Rushed time - only time actually spent playing
         val timeLeftVersus = (60_000L * 5L) - (now() - Game.roundStartTime - (Game.roundPauseSeconds * 1000L)) + Game.bonusTime
         val millisecondsLeft = if (Settings.coOpMode) timeLeftCoOp else timeLeftVersus
+        if (Game.players.isEmpty()) return
         Game.players.forEach { (uuid, block) ->
             val player = Bukkit.getPlayer(uuid) ?: return@forEach
             if (player.uniqueId in Game.hasFoundBlock) {
@@ -57,7 +58,7 @@ class BlockShowTask : Runnable {
                     ObjectiveManager.setBoard(it)
                 }
         }
-        if (millisecondsLeft <= 0 && Game.players.isNotEmpty()) {
+        if (millisecondsLeft <= 0) {
             Game.startNextRound()
         }
 

@@ -1,9 +1,9 @@
 package me.zeepic.blockshuffle
 
 import api.helpers.*
-import kong.unirest.Unirest
 import net.kyori.adventure.title.Title
 import org.bukkit.*
+import org.bukkit.World.Environment
 import org.bukkit.command.CommandSender
 import org.bukkit.potion.PotionEffect
 import java.util.*
@@ -23,9 +23,7 @@ object Game {
     var roundPauseSeconds = 0L
 
     fun startNextRound(first: Boolean = false) {
-        if (players.isEmpty()) {
-            return
-        }
+        if (players.isEmpty()) return
         round += 1
         roundStartTime = now()
         roundPauseSeconds = 0L
@@ -105,19 +103,44 @@ object Game {
         } else if (players.size == 1) {
             broadcast("&a${Bukkit.getOfflinePlayer(players.keys.first()).name} &7is the winner!")
         }
-        broadcast("You've reached round $round! That means you've completed a total of ${round - 1 - skipsUsed} rounds!")
+        val rounds = round - 2 - skipsUsed
+        broadcast("You've reached round ${round - 1}! That means you've completed a total of $rounds round${if (rounds == 1) "" else "s"}!")
         players.clear()
         hasFoundBlock.clear()
         round = 0
         Bukkit.getOnlinePlayers().forEach {
             it.teleport(BlockShuffle.lobbyLocation)
             it.send("Teleported to the lobby!")
-            it.inventory.clear()
+            if (!Settings.preserveInventory) it.inventory.clear()
             it.clearTitle()
             it.bedSpawnLocation = null
             it.exp = 0f
             it.activePotionEffects.map(PotionEffect::getType).forEach(it::removePotionEffect)
             it.gameMode = GameMode.ADVENTURE
+        }
+    }
+
+    private fun createWorldAsync(seed: Long, environment: Environment, callback: (String, World?) -> Unit) {
+        val world = WorldCreator(BlockShuffle.gameWorldName + "_" + environment.name.lowercase())
+            .seed(seed)
+            .environment(environment)
+            .createWorld()
+        val environmentName = environment.name.lowercase().replace("_", " ")
+        if (world == null) {
+            callback("&cFailed to create a new game world ($environmentName)!", null)
+            return
+        }
+        world.setGameRule(GameRule.DO_INSOMNIA, false)
+        world.setGameRule(GameRule.PLAYERS_SLEEPING_PERCENTAGE, 1)
+        val loadingRadius = 16
+        val futures = mutableListOf<CompletableFuture<Chunk>>()
+        for (x in -loadingRadius..loadingRadius) {
+            for (z in -loadingRadius.. loadingRadius) {
+                futures += world.getChunkAtAsync(x, z, true)
+            }
+        }
+        CompletableFuture.allOf(*futures.toTypedArray()).thenRun {
+            callback("Created new $environmentName world!", world)
         }
     }
 
@@ -128,62 +151,51 @@ object Game {
             callback(false)
             return
         }
-        val world = WorldCreator(BlockShuffle.gameWorldName)
-            .seed(seed)
-            .createWorld()
-        if (world == null) {
-            creator.send("&cFailed to create a new game world!")
-            callback(false)
-            return
-        }
-        world.setGameRule(GameRule.DO_INSOMNIA, false)
-        world.setGameRule(GameRule.PLAYERS_SLEEPING_PERCENTAGE, 1)
-        BlockShuffle.gameWorld = world
-        creator.send("Created new world with seed $seed!")
-        val loadingRadius = 16
-        val futures = mutableListOf<CompletableFuture<Chunk>>()
-        for (x in -loadingRadius..loadingRadius) {
-            for (z in -loadingRadius.. loadingRadius) {
-                futures += world.getChunkAtAsync(x, z, true)
-            }
-        }
-        CompletableFuture.allOf(*futures.toTypedArray()).thenRun {
-            val nether = WorldCreator(BlockShuffle.gameNetherWorldName)
-                .seed(seed)
-                .environment(World.Environment.NETHER)
-                .createWorld()
-            if (nether == null) {
-                creator.send("&cFailed to create a new game nether!")
+        createWorldAsync(seed, Environment.NORMAL) { message, world ->
+            if (world == null) {
+                creator.send(message)
                 callback(false)
-                return@thenRun
-            }
-            BlockShuffle.gameNetherWorld = nether
-            creator.send("Created new nether world!")
-            futures.clear()
-            for (x in -loadingRadius..loadingRadius) {
-                for (z in -loadingRadius.. loadingRadius) {
-                    futures += world.getChunkAtAsync(x, z, true)
+            } else {
+                broadcast(message)
+                BlockShuffle.gameWorld = world
+                createWorldAsync(seed, Environment.NETHER) { message2, nether ->
+                    if (nether == null) {
+                        creator.send(message2)
+                        callback(false)
+                    } else {
+                        broadcast(message2)
+                        BlockShuffle.gameNetherWorld = nether
+                        callback(true)
+                        /*
+                        createWorldAsnyc(seed, Environment.THE_END) { message3, end ->
+                            if (end == null) {
+                                creator.send(message3)
+                                callback(false)
+                            } else {
+                                broadcast(message3)
+                                BlockShuffle.gameEndWorld = end
+                                callback(true)
+                            }
+                        }
+                        */
+                    }
                 }
-            }
-            CompletableFuture.allOf(*futures.toTypedArray()).thenRun {
-                broadcast("&aNew world has been generated!")
-                callback(true)
             }
         }
     }
 
 
     private fun generateSeed(): Long? {
-        // Check the seed hunt api for a seed with a village near spawn
         return Random().nextLong()
-        val response = Unirest.post("https://seedhunt.net/api/verified?limit=50&page=0")
-            .header("Content-Type", "application/json")
-            .body("{\r\n    \"filter\": \"village_distance<=${Settings.villageDistance}\",\r\n    \"sort\": [\r\n        {\r\n            \"field\": \"\",\r\n            \"direction\": \"desc\"\r\n        }\r\n    ]\r\n}")
-            .asJson()
-        if (response.status != 200) return null
-        val seeds = response.body.getObject().getJSONArray("seeds")
-        val seed = seeds.getJSONObject(BlockShuffle.random.nextInt(seeds.length()))
-        return seed.getLong("seed")
+//        // Check the seed hunt api for a seed with a village near spawn
+//        val response = Unirest.post("https://seedhunt.net/api/verified?limit=50&page=0")
+//            .header("Content-Type", "application/json")
+//            .body("{\r\n    \"filter\": \"village_distance<=${Settings.villageDistance}\",\r\n    \"sort\": [\r\n        {\r\n            \"field\": \"\",\r\n            \"direction\": \"desc\"\r\n        }\r\n    ]\r\n}")
+//            .asJson()
+//        if (response.status != 200) return null
+//        val seeds = response.body.getObject().getJSONArray("seeds")
+//        val seed = seeds.getJSONObject(BlockShuffle.random.nextInt(seeds.length()))
+//        return seed.getLong("seed")
     }
 
     fun removePlayer(id: UUID, removeMe: List<UUID> = emptyList(), preRemovalPlayerCount: Int = players.size) {

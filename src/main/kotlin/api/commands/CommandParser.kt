@@ -94,6 +94,6 @@ object CommandParser {
     }
 
     fun getArgError(index: Int, badArg: String, requirement: String, note: String = "")
-            = "&cIncorrect usage! &7&oFor argument #${index + 1} you provided \"$badArg\", but $requirement was required. $note"
+            = "&cIncorrect usage! &7&oFor argument #${index - 1} you provided \"$badArg\", but $requirement was required. $note"
 
 }

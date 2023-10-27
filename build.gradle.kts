@@ -12,7 +12,7 @@ val projectName = "BlockShuffle"
 group = "me.zeepic"
 val ver = "1.0.0"
 version = ver
-val mcVersion = "1.19"
+val mcVersion = "1.20"
 
 repositories {
     mavenCentral()

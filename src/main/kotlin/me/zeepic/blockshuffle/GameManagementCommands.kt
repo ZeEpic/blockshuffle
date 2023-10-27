@@ -4,7 +4,6 @@ import api.commands.Command
 import api.commands.CommandGroup
 import api.commands.CommandResult
 import api.helpers.*
-import me.zeepic.blockshuffle.Game.startNextRound
 import org.bukkit.*
 import org.bukkit.block.Biome
 import org.bukkit.command.CommandSender
@@ -25,28 +24,35 @@ var skipsUsed = 0
 class GameManagementCommands {
 
     @Command("start", "Deletes the current game world and starts a new one.")
-    fun startCommand(sender: CommandSender): CommandResult {
+    fun startCommand(sender: CommandSender, deleteWorld: Boolean): CommandResult {
         sender.send("Starting game...")
-        if (BlockShuffle.gameWorld != null) {
+        if (BlockShuffle.gameWorld != null && deleteWorld) {
             Bukkit.getOnlinePlayers().forEach {
                 it.teleport(BlockShuffle.lobbyLocation)
-                it.inventory.clear()
+                if (!Settings.preserveInventory) it.inventory.clear()
                 it.gameMode = GameMode.ADVENTURE
             }
             Bukkit.unloadWorld(BlockShuffle.gameWorld!!, false)
             BlockShuffle.gameNetherWorld?.let { Bukkit.unloadWorld(it, false) }
+            BlockShuffle.gameEndWorld?.let { Bukkit.unloadWorld(it, false) }
         }
-        val worldFolder = BlockShuffle.gameWorld?.worldFolder
-        val netherFolder = BlockShuffle.gameNetherWorld?.worldFolder
-        val result = (worldFolder?.deleteRecursively() ?: false) && (netherFolder?.deleteRecursively() ?: false)
-        if (!result) {
-            sender.send("&cFailed to delete old game world!")
+        if (deleteWorld) {
+            val worldFolder = BlockShuffle.gameWorld?.worldFolder
+            val netherFolder = BlockShuffle.gameNetherWorld?.worldFolder
+            //val endFolder = BlockShuffle.gameEndWorld?.worldFolder
+            val result = (worldFolder?.deleteRecursively() ?: false) &&
+                    (netherFolder?.deleteRecursively() ?: false) //&&
+                    //(endFolder?.deleteRecursively() ?: false)
+            if (!result) {
+                sender.send("&cFailed to delete old game world!")
+            }
         }
         Game.generateNewWorld(sender) { success ->
             if (!success) return@generateNewWorld
             Game.players.clear()
             Game.lives.clear()
             Game.hasFoundBlock.clear()
+            Game.bonusTime = 0L
             val spawnLocation = BlockShuffle.gameWorld!!.spawnLocation
             val recipeKeys = recipeKeys()
             Bukkit.getOnlinePlayers().forEach {
@@ -58,7 +64,7 @@ class GameManagementCommands {
             sender.send("&aGame started!")
             if (Settings.revealDesertBiome) {
                 // Find nearest desert biome
-                val desertBiome = BlockShuffle.gameWorld!!.locateNearestBiome(spawnLocation, Biome.DESERT, 1000, 8)
+                val desertBiome = BlockShuffle.gameWorld!!.locateNearestBiome(spawnLocation, Biome.DESERT, 5_000)
                 if (desertBiome == null) {
                     broadcast("&cNo desert biome was found near spawn!")
                 } else {
@@ -75,7 +81,7 @@ class GameManagementCommands {
             }
             Game.round = 0
             Settings.isGamePaused = false
-            startNextRound(first = true)
+            Game.startNextRound(first = true)
         }
         return CommandResult.SUCCESS
     }
@@ -102,13 +108,14 @@ class GameManagementCommands {
         player.teleport(spawnLocation)
         player.send("&7&oTeleported! &aA new game is starting.")
         player.gameMode = GameMode.SURVIVAL
-        player.inventory.clear()
+        if (!Settings.preserveInventory) player.inventory.clear()
         player.clearTitle()
         player.activePotionEffects.map(PotionEffect::getType).forEach(player::removePotionEffect)
         player.health = 20.0
         player.foodLevel = 20
         player.exp = 0f
         player.bedSpawnLocation = null
+        Game.players[player.uniqueId] = Settings.easyBlocks[randomInt(Settings.easyBlocks.size)]
         recipeKeys.forEach(player::discoverRecipe)
         if (Settings.bundle) {
             player.inventory.addItem(ItemStack(Material.BUNDLE).named("Backpack"))
@@ -131,7 +138,7 @@ class GameManagementCommands {
             target.player?.teleport(BlockShuffle.lobbyLocation)
         }
         if (Game.players.size == Game.hasFoundBlock.size) {
-            startNextRound()
+            Game.startNextRound()
         }
         return CommandResult.SUCCESS
     }
@@ -177,7 +184,7 @@ class GameManagementCommands {
         if (skips.size == Game.players.size) {
             broadcast("&aAll players have voted to skip this round!")
             skipsUsed += 1
-            startNextRound()
+            Game.startNextRound()
         }
         return CommandResult.SUCCESS
     }
@@ -231,6 +238,7 @@ class GameManagementCommands {
             return CommandResult.SILENT_FAILURE
         }
         Game.bonusTime += seconds * 1000L
+        sender.send("&7Bonus time is now &6${Game.bonusTime / 1000L} seconds&7.")
         sender.send("&7Added &6${(seconds * 1000L).readableTimeLength()} &7to the current round.")
         return CommandResult.SUCCESS
     }

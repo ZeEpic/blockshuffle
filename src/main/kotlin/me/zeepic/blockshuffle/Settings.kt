@@ -15,8 +15,11 @@ object Settings {
     var lives = -1
     var pvp = !coOpMode
     var skipsAllowed = 3
-    var villageDistance = 150
+//    var villageDistance = 150
     var bundle = true
+
+    var preserveInventory = false
+
     var revealDesertBiome = false
         set(value) {
             if (value) {
@@ -78,6 +81,10 @@ object Settings {
         Material.STONE_SLAB,
         Material.FLOWER_POT,
         Material.SMOKER,
+        Material.LADDER,
+        Material.CHISELED_BOOKSHELF,
+        Material.DECORATED_POT,
+
         // Wools
         Material.WHITE_WOOL,
         Material.ORANGE_WOOL,
@@ -141,6 +148,7 @@ object Settings {
         Material.YELLOW_WOOL,
         Material.RED_CONCRETE,
         Material.YELLOW_CONCRETE,
+        Material.LADDER,
     )
     val mediumBlocks = mutableListOf(
         Material.DRIPSTONE_BLOCK,
@@ -192,6 +200,13 @@ object Settings {
         Material.GRAY_CONCRETE,
         Material.GRAY_STAINED_GLASS,
         Material.WHITE_STAINED_GLASS,
+        Material.DRIED_KELP_BLOCK,
+        Material.OAK_FENCE,
+        Material.OAK_FENCE_GATE,
+        Material.IRON_DOOR,
+        Material.IRON_TRAPDOOR,
+        Material.CUT_COPPER_STAIRS,
+        Material.OAK_HANGING_SIGN
     )
     val greenBlocks = mutableListOf(
         Material.CACTUS,
@@ -209,6 +224,7 @@ object Settings {
         Material.COMPARATOR,
         Material.NETHERRACK,
         Material.NETHER_BRICKS,
+        Material.NETHER_QUARTZ_ORE,
         Material.SOUL_SAND,
         Material.SOUL_SOIL,
         Material.MAGMA_BLOCK,
@@ -233,13 +249,26 @@ object Settings {
         Material.WARPED_PLANKS,
         Material.WARPED_NYLIUM,
         Material.WARPED_HYPHAE,
-        Material.SHROOMLIGHT
+        Material.SHROOMLIGHT,
+        Material.NETHER_GOLD_ORE,
+        Material.TINTED_GLASS,
+        Material.MOSS_BLOCK,
+        Material.CHISELED_STONE_BRICKS,
+        Material.CHISELED_DEEPSLATE,
+        Material.CHISELED_POLISHED_BLACKSTONE,
+        Material.POLISHED_BLACKSTONE,
+        Material.POLISHED_BLACKSTONE_BRICKS,
+        Material.POLISHED_BLACKSTONE_BRICK_SLAB,
+        Material.TARGET,
+        Material.REDSTONE_LAMP,
+        Material.CHISELED_QUARTZ_BLOCK
     )
     val endBlocks = mutableListOf(
         Material.PURPUR_BLOCK,
         Material.CHORUS_FLOWER,
         Material.CHORUS_PLANT,
         Material.END_STONE,
-        Material.END_STONE_BRICKS
+        Material.END_STONE_BRICKS,
+        Material.ENDER_CHEST
     )
 }
